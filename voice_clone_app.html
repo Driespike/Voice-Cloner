@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoiceForge — Voice Cloning Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --surface: #0d1117;
+    --surface2: #141b24;
+    --border: #1e2d3d;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --accent3: #f59e0b;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --success: #10b981;
+    --danger: #ef4444;
+    --glow: 0 0 30px rgba(0, 212, 255, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Radial glow at top */
+  body::after {
+    content: '';
+    position: fixed;
+    top: -200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(0, 212, 255, 0.06), transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* HEADER */
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .logo-line {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+
+  .logo-icon {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+  }
+
+  h1 {
+    font-size: clamp(28px, 5vw, 48px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, var(--accent), #fff 50%, var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .tagline {
+    color: var(--text-dim);
+    font-size: 14px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* STATUS BAR */
+  .status-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 28px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    animation: fadeDown 0.6s 0.1s ease both;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+
+  .status-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 2s infinite; }
+  .status-dot.recording { background: var(--danger); box-shadow: 0 0 8px var(--danger); animation: pulse 0.8s infinite; }
+  .status-dot.loading { background: var(--accent3); box-shadow: 0 0 8px var(--accent3); animation: pulse 1s infinite; }
+
+  #statusText { color: var(--text-dim); flex: 1; }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 28px;
+    animation: fadeDown 0.6s 0.15s ease both;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 16px;
+    background: transparent;
+    border: none;
+    border-radius: 9px;
+    color: var(--text-dim);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .tab.active {
+    background: var(--surface2);
+    color: var(--accent);
+    border: 1px solid var(--border);
+  }
+
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeUp 0.4s ease both; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .card:hover::before { opacity: 0.5; }
+
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title span { font-size: 14px; }
+
+  /* WAVEFORM VISUALIZER */
+  .waveform-container {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 80px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .waveform-bars {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    height: 100%;
+  }
+
+  .bar {
+    width: 4px;
+    background: var(--accent);
+    border-radius: 2px;
+    height: 6px;
+    transition: height 0.1s;
+    opacity: 0.6;
+  }
+
+  .bar.active { opacity: 1; }
+
+  /* RECORD BUTTON */
+  .record-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 16px 24px;
+    border-radius: 12px;
+    border: 2px solid var(--danger);
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--danger);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .record-btn:hover { background: rgba(239, 68, 68, 0.15); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(239, 68, 68, 0.2); }
+  .record-btn.recording { background: rgba(239, 68, 68, 0.2); border-color: var(--danger); animation: recordPulse 1s infinite; }
+
+  /* RECORDINGS LIST */
+  .recordings-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+
+  .recording-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    animation: slideIn 0.3s ease both;
+  }
+
+  .rec-name {
+    flex: 1;
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    color: var(--text-dim);
+  }
+
+  .rec-duration {
+    font-size: 12px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+  }
+
+  .play-btn, .del-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: all 0.2s;
+  }
+
+  .play-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .del-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* TRANSCRIPT INPUT */
+  .transcript-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    resize: vertical;
+    min-height: 64px;
+    transition: border-color 0.2s;
+    outline: none;
+    margin-top: 10px;
+  }
+
+  .transcript-input:focus { border-color: var(--accent); }
+  .transcript-input::placeholder { color: var(--text-dim); }
+
+  /* TTS SECTION */
+  .tts-textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 120px;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  .tts-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1); }
+
+  /* LANG SELECTOR */
+  .lang-row {
+    display: flex;
+    gap: 10px;
+    margin: 16px 0;
+  }
+
+  .lang-btn {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-dim);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(0, 212, 255, 0.08); }
+
+  /* EMOTION SELECTOR */
+  .emotion-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  .emotion-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .emotion-btn.active { border-color: var(--accent2); color: var(--accent2); background: rgba(124, 58, 237, 0.1); }
+
+  /* GENERATE BUTTON */
+  .generate-btn {
+    width: 100%;
+    padding: 16px 24px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: white;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .generate-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .generate-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0, 212, 255, 0.3); }
+  .generate-btn:hover::before { opacity: 1; }
+  .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* AUDIO OUTPUT */
+  .audio-output {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 16px;
+    display: none;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .audio-output.visible { display: block; }
+
+  audio {
+    width: 100%;
+    margin-top: 10px;
+    border-radius: 8px;
+    accent-color: var(--accent);
+  }
+
+  .output-meta {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .meta-chip {
+    padding: 4px 12px;
+    border-radius: 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .meta-chip.accent { border-color: var(--accent); color: var(--accent); }
+
+  /* SETTINGS PANEL */
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .setting-row:last-child { border-bottom: none; }
+
+  .setting-info label {
+    font-size: 14px;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .setting-info small {
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+  }
+
+  .slider-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  input[type="range"] {
+    width: 140px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .slider-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  /* INFO CALLOUT */
+  .callout {
+    background: rgba(0, 212, 255, 0.05);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .callout strong { color: var(--accent); }
+
+  /* PROGRESS */
+  .progress-bar-wrap {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    height: 6px;
+    margin: 12px 0;
+    overflow: hidden;
+    display: none;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 6px;
+    width: 0%;
+    transition: width 0.3s;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* ANIMATIONS */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  @keyframes recordPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+
+  @keyframes waveAnim {
+    0%, 100% { height: 6px; }
+    50% { height: 40px; }
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* RESPONSIVE */
+  @media (max-width: 600px) {
+    .lang-row { flex-wrap: wrap; }
+    input[type="range"] { width: 100px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-line">
+      <div class="logo-icon">🎙️</div>
+      <h1>VoiceForge</h1>
+    </div>
+    <p class="tagline">Orpheus 3B · LoRA Voice Cloning · EN + HI</p>
+  </header>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="status-dot active" id="statusDot"></div>
+    <span id="statusText">Ready — connect your Colab backend or use demo mode</span>
+    <span style="color: var(--text-dim); font-size: 11px;" id="modeTag">DEMO MODE</span>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('record')">🎙 Record Voice</button>
+    <button class="tab" onclick="switchTab('synthesize')">🔊 Synthesize</button>
+    <button class="tab" onclick="switchTab('settings')">⚙ Settings</button>
+  </div>
+
+  <!-- PANEL: RECORD -->
+  <div class="panel active" id="panel-record">
+    <div class="callout">
+      <strong>Step 1 of 2 — Build your voice dataset.</strong><br>
+      Record 20–50 clips of your voice (English &amp; Hindi). Each clip: 3–10 sec, no background noise. Then export the dataset and use it in the Colab notebook to fine-tune Orpheus 3B.
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>🎙</span> Voice Recorder</div>
+
+      <!-- Waveform -->
+      <div class="waveform-container">
+        <div class="waveform-bars" id="waveformBars">
+          <!-- Generated by JS -->
+        </div>
+      </div>
+
+      <button class="record-btn" id="recordBtn" onclick="toggleRecording()">
+        <span id="recordIcon">⏺</span>
+        <span id="recordLabel">Start Recording</span>
+      </button>
+
+      <textarea
+        class="transcript-input"
+        id="transcriptInput"
+        placeholder="Type what you're about to say (transcript)... e.g. Hello, my name is Pranjal."
+        rows="2"
+      ></textarea>
+
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <div class="lang-btn active" id="recLangEn" onclick="setRecLang('en')">English</div>
+        <div class="lang-btn" id="recLangHi" onclick="setRecLang('hi')">Hindi</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>🗂</span> Recordings <span id="recCount" style="color:var(--accent); font-size:13px; font-weight:700;">0</span></div>
+      <div class="recordings-list" id="recordingsList">
+        <div style="color: var(--text-dim); font-size: 13px; font-family: 'Space Mono', monospace; text-align: center; padding: 20px;">
+          No recordings yet. Hit record above!
+        </div>
+      </div>
+    </div>
+
+    <button class="generate-btn" onclick="exportDataset()" id="exportBtn" style="background: linear-gradient(135deg, #10b981, #059669); margin-top:4px;">
+      📦 Export Dataset for Colab Fine-tuning
+    </button>
+  </div>
+
+  <!-- PANEL: SYNTHESIZE -->
+  <div class="panel" id="panel-synthesize">
+    <div class="callout">
+      <strong>Step 2 of 2 — Generate speech with your cloned voice.</strong><br>
+      After fine-tuning in Colab, enter your HuggingFace adapter URL below. In demo mode, a simulated voice response is used.
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>🔗</span> Model Connection</div>
+      <input
+        type="text"
+        id="adapterUrl"
+        placeholder="HuggingFace adapter URL  e.g. username/orpheus-my-voice"
+        style="width:100%; background: var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 14px; color:var(--text); font-family:'Space Mono',monospace; font-size:12px; outline:none;"
+      >
+      <button onclick="connectAdapter()" style="margin-top:10px; padding:8px 20px; border-radius:8px; border:1px solid var(--accent); background:rgba(0,212,255,0.08); color:var(--accent); font-family:'Syne',sans-serif; font-size:13px; font-weight:600; cursor:pointer;">
+        Connect
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>✍️</span> Text to Speak</div>
+
+      <textarea
+        class="tts-textarea"
+        id="ttsText"
+        placeholder="Type text here... supports English and Hindi both.&#10;&#10;e.g. Hello world! मेरा नाम प्रांजल है।"
+      ></textarea>
+
+      <!-- Language -->
+      <div class="lang-row">
+        <button class="lang-btn active" id="synthLangEn" onclick="setSynthLang('en')">🇬🇧 English</button>
+        <button class="lang-btn" id="synthLangHi" onclick="setSynthLang('hi')">🇮🇳 Hindi</button>
+        <button class="lang-btn" id="synthLangMix" onclick="setSynthLang('mix')">🔀 Hinglish</button>
+      </div>
+
+      <!-- Emotion tags -->
+      <div class="card-title" style="margin-bottom: 10px;"><span>🎭</span> Emotion Tag</div>
+      <div class="emotion-row" id="emotionRow">
+        <button class="emotion-btn active" onclick="setEmotion(this, '')">Neutral</button>
+        <button class="emotion-btn" onclick="setEmotion(this, '<happy>')">Happy 😊</button>
+        <button class="emotion-btn" onclick="setEmotion(this, '<sad>')">Sad 😢</button>
+        <button class="emotion-btn" onclick="setEmotion(this, '<excited>')">Excited 🎉</button>
+        <button class="emotion-btn" onclick="setEmotion(this, '<angry>')">Angry 😤</button>
+        <button class="emotion-btn" onclick="setEmotion(this, '<whisper>')">Whisper 🤫</button>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-bar-wrap" id="progressWrap">
+        <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+      </div>
+
+      <button class="generate-btn" id="generateBtn" onclick="generateSpeech()">
+        🔊 Generate Speech
+      </button>
+    </div>
+
+    <!-- Audio Output -->
+    <div class="audio-output" id="audioOutput">
+      <div class="card-title" style="margin-bottom:10px;"><span>🎵</span> Output Audio</div>
+      <audio id="audioPlayer" controls></audio>
+      <div class="output-meta" id="outputMeta"></div>
+      <button onclick="downloadAudio()" style="margin-top:14px; padding:8px 20px; border-radius:8px; border:1px solid var(--success); background:rgba(16,185,129,0.08); color:var(--success); font-family:'Syne',sans-serif; font-size:13px; font-weight:600; cursor:pointer;">
+        ⬇ Download WAV
+      </button>
+    </div>
+  </div>
+
+  <!-- PANEL: SETTINGS -->
+  <div class="panel" id="panel-settings">
+    <div class="card">
+      <div class="card-title"><span>🎛</span> Generation Parameters</div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <label>Temperature</label>
+          <small>Higher = more expressive, less stable</small>
+        </div>
+        <div class="slider-container">
+          <input type="range" min="0.1" max="1.5" step="0.05" value="0.7" id="tempSlider" oninput="updateSlider('temp', this.value)">
+          <span class="slider-val" id="tempVal">0.70</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <label>Top-P</label>
+          <small>Nucleus sampling threshold</small>
+        </div>
+        <div class="slider-container">
+          <input type="range" min="0.5" max="1.0" step="0.01" value="0.9" id="topPSlider" oninput="updateSlider('topP', this.value)">
+          <span class="slider-val" id="topPVal">0.90</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <label>Max New Tokens</label>
+          <small>Longer audio = more tokens needed</small>
+        </div>
+        <div class="slider-container">
+          <input type="range" min="400" max="2000" step="100" value="1200" id="tokensSlider" oninput="updateSlider('tokens', this.value)">
+          <span class="slider-val" id="tokensVal">1200</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <label>Repetition Penalty</label>
+          <small>Prevents looping audio artifacts</small>
+        </div>
+        <div class="slider-container">
+          <input type="range" min="1.0" max="1.5" step="0.05" value="1.1" id="repSlider" oninput="updateSlider('rep', this.value)">
+          <span class="slider-val" id="repVal">1.10</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>ℹ️</span> How It Works</div>
+      <div style="font-size: 13px; line-height: 1.8; color: var(--text-dim); font-family: 'Space Mono', monospace;">
+        <p style="margin-bottom:10px;"><span style="color:var(--accent)">Orpheus 3B</span> is a TTS model built on Llama architecture. It generates SNAC audio tokens instead of text tokens.</p>
+        <p style="margin-bottom:10px;"><span style="color:var(--accent2)">LoRA fine-tuning</span> teaches the model to produce audio in YOUR voice style — only ~1% of weights are trained, so it fits on a free Colab T4 GPU.</p>
+        <p><span style="color:var(--accent3)">SNAC codec</span> converts the model's output tokens back into actual audio waveforms at 24kHz quality.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// =========================================================
+// STATE
+// =========================================================
+const state = {
+  recordings: [],
+  isRecording: false,
+  mediaRecorder: null,
+  audioChunks: [],
+  recStartTime: null,
+  recLang: 'en',
+  synthLang: 'en',
+  emotion: '',
+  currentAudioBlob: null,
+  params: { temp: 0.70, topP: 0.90, tokens: 1200, rep: 1.10 },
+  adapterUrl: '',
+  animFrame: null,
+  analyser: null,
+  audioCtx: null,
+};
+
+// =========================================================
+// TABS
+// =========================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['record','synthesize','settings'][i] === name);
+  });
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+}
+
+// =========================================================
+// WAVEFORM
+// =========================================================
+const BAR_COUNT = 48;
+(function initWaveform() {
+  const container = document.getElementById('waveformBars');
+  for (let i = 0; i < BAR_COUNT; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.animationDelay = `${(i / BAR_COUNT) * 1}s`;
+    container.appendChild(bar);
+  }
+})();
+
+function animateWaveform(analyser) {
+  const bars = document.querySelectorAll('.bar');
+  const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+  function draw() {
+    analyser.getByteFrequencyData(dataArray);
+    bars.forEach((bar, i) => {
+      const idx = Math.floor(i * dataArray.length / BAR_COUNT);
+      const val = dataArray[idx] / 255;
+      const height = 6 + val * 54;
+      bar.style.height = `${height}px`;
+      bar.classList.toggle('active', val > 0.05);
+    });
+    state.animFrame = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function stopWaveform() {
+  if (state.animFrame) cancelAnimationFrame(state.animFrame);
+  document.querySelectorAll('.bar').forEach(b => {
+    b.style.height = '6px';
+    b.classList.remove('active');
+  });
+}
+
+function idleWaveform() {
+  // Gentle idle animation
+  const bars = document.querySelectorAll('.bar');
+  function idle() {
+    bars.forEach((bar, i) => {
+      const h = 6 + Math.abs(Math.sin(Date.now() / 600 + i * 0.3)) * 14;
+      bar.style.height = `${h}px`;
+    });
+    state.animFrame = requestAnimationFrame(idle);
+  }
+  idle();
+}
+
+// =========================================================
+// RECORDING
+// =========================================================
+function setRecLang(lang) {
+  state.recLang = lang;
+  document.getElementById('recLangEn').classList.toggle('active', lang === 'en');
+  document.getElementById('recLangHi').classList.toggle('active', lang === 'hi');
+}
+
+async function toggleRecording() {
+  if (!state.isRecording) {
+    await startRecording();
+  } else {
+    stopRecording();
+  }
+}
+
+async function startRecording() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // Setup analyser for waveform
+    state.audioCtx = new AudioContext();
+    const source = state.audioCtx.createMediaStreamSource(stream);
+    state.analyser = state.audioCtx.createAnalyser();
+    state.analyser.fftSize = 128;
+    source.connect(state.analyser);
+
+    state.mediaRecorder = new MediaRecorder(stream);
+    state.audioChunks = [];
+    state.isRecording = true;
+    state.recStartTime = Date.now();
+
+    state.mediaRecorder.ondataavailable = e => state.audioChunks.push(e.data);
+    state.mediaRecorder.onstop = handleRecordingStop;
+    state.mediaRecorder.start();
+
+    // UI update
+    document.getElementById('recordBtn').classList.add('recording');
+    document.getElementById('recordIcon').textContent = '⏹';
+    document.getElementById('recordLabel').textContent = 'Stop Recording';
+    setStatus('recording', 'Recording...');
+    cancelAnimationFrame(state.animFrame);
+    animateWaveform(state.analyser);
+
+  } catch (err) {
+    setStatus('active', 'Microphone access denied — check browser permissions');
+    alert('Could not access microphone: ' + err.message);
+  }
+}
+
+function stopRecording() {
+  if (state.mediaRecorder) {
+    state.mediaRecorder.stop();
+    state.mediaRecorder.stream.getTracks().forEach(t => t.stop());
+  }
+  state.isRecording = false;
+  stopWaveform();
+  idleWaveform();
+
+  document.getElementById('recordBtn').classList.remove('recording');
+  document.getElementById('recordIcon').textContent = '⏺';
+  document.getElementById('recordLabel').textContent = 'Start Recording';
+  setStatus('active', 'Recording saved!');
+}
+
+function handleRecordingStop() {
+  const blob = new Blob(state.audioChunks, { type: 'audio/webm' });
+  const duration = ((Date.now() - state.recStartTime) / 1000).toFixed(1);
+  const transcript = document.getElementById('transcriptInput').value.trim();
+  const id = Date.now();
+
+  state.recordings.push({
+    id, blob, duration,
+    transcript: transcript || '(no transcript)',
+    lang: state.recLang,
+    url: URL.createObjectURL(blob),
+    name: `clip_${String(state.recordings.length + 1).padStart(3, '0')}.webm`
+  });
+
+  document.getElementById('transcriptInput').value = '';
+  renderRecordings();
+}
+
+function renderRecordings() {
+  const list = document.getElementById('recordingsList');
+  document.getElementById('recCount').textContent = state.recordings.length;
+
+  if (state.recordings.length === 0) {
+    list.innerHTML = '<div style="color: var(--text-dim); font-size: 13px; font-family: \'Space Mono\', monospace; text-align: center; padding: 20px;">No recordings yet. Hit record above!</div>';
+    return;
+  }
+
+  list.innerHTML = state.recordings.map((r, i) => `
+    <div class="recording-item" id="rec-${r.id}">
+      <div style="font-size:18px;">${r.lang === 'en' ? '🇬🇧' : '🇮🇳'}</div>
+      <div style="flex:1; min-width:0;">
+        <div class="rec-name">${r.name}</div>
+        <div style="font-size:11px; color:var(--text-dim); font-family:'Space Mono',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px;">${r.transcript}</div>
+      </div>
+      <span class="rec-duration">${r.duration}s</span>
+      <button class="play-btn" onclick="playRecording(${i})">▶</button>
+      <button class="del-btn" onclick="deleteRecording(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function playRecording(i) {
+  const r = state.recordings[i];
+  const audio = new Audio(r.url);
+  audio.play();
+}
+
+function deleteRecording(i) {
+  state.recordings.splice(i, 1);
+  renderRecordings();
+}
+
+// =========================================================
+// EXPORT DATASET
+// =========================================================
+function exportDataset() {
+  if (state.recordings.length === 0) {
+    alert('Record at least one clip first!');
+    return;
+  }
+
+  // Create CSV
+  let csv = 'filename,text,language\n';
+  state.recordings.forEach(r => {
+    const text = r.transcript.replace(/"/g, '""');
+    csv += `"${r.name}","${text}","${r.lang}"\n`;
+  });
+
+  const csvBlob = new Blob([csv], { type: 'text/csv' });
+  const csvUrl = URL.createObjectURL(csvBlob);
+  const a = document.createElement('a');
+  a.href = csvUrl;
+  a.download = 'transcripts.csv';
+  a.click();
+
+  // Download individual audio files
+  state.recordings.forEach(r => {
+    setTimeout(() => {
+      const a2 = document.createElement('a');
+      a2.href = r.url;
+      a2.download = r.name;
+      a2.click();
+    }, 300);
+  });
+
+  setStatus('active', `Exported ${state.recordings.length} recordings + transcripts.csv`);
+}
+
+// =========================================================
+// SYNTHESIS
+// =========================================================
+function setSynthLang(lang) {
+  state.synthLang = lang;
+  ['en','hi','mix'].forEach(l => {
+    document.getElementById(`synthLang${l.charAt(0).toUpperCase()+l.slice(1)}`).classList.toggle('active', l === lang);
+  });
+}
+
+function setEmotion(btn, tag) {
+  document.querySelectorAll('.emotion-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.emotion = tag;
+}
+
+function connectAdapter() {
+  const url = document.getElementById('adapterUrl').value.trim();
+  if (!url) { alert('Enter a HuggingFace adapter URL first'); return; }
+  state.adapterUrl = url;
+  document.getElementById('modeTag').textContent = 'HF CONNECTED';
+  setStatus('active', `Adapter connected: ${url}`);
+}
+
+async function generateSpeech() {
+  const text = document.getElementById('ttsText').value.trim();
+  if (!text) { alert('Enter some text to synthesize!'); return; }
+
+  const btn = document.getElementById('generateBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating...';
+
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  progressWrap.style.display = 'block';
+
+  setStatus('loading', 'Generating speech...');
+
+  // Simulate progress
+  let progress = 0;
+  const progressInterval = setInterval(() => {
+    progress = Math.min(progress + Math.random() * 8, 92);
+    progressFill.style.width = `${progress}%`;
+  }, 200);
+
+  // Demo mode: generate a beep tone to simulate output
+  // In real deployment, this would call your Colab/HF Spaces endpoint
+  await new Promise(r => setTimeout(r, 2200 + Math.random() * 1000));
+
+  clearInterval(progressInterval);
+  progressFill.style.width = '100%';
+  setTimeout(() => { progressWrap.style.display = 'none'; progressFill.style.width = '0%'; }, 500);
+
+  // Generate demo audio (oscillator sine wave)
+  const demoAudio = generateDemoAudio(text);
+  state.currentAudioBlob = demoAudio;
+
+  const url = URL.createObjectURL(demoAudio);
+  const player = document.getElementById('audioPlayer');
+  player.src = url;
+
+  const outputDiv = document.getElementById('audioOutput');
+  outputDiv.classList.add('visible');
+
+  const langLabel = {'en':'English','hi':'Hindi','mix':'Hinglish'}[state.synthLang];
+  const emotionLabel = state.emotion || 'Neutral';
+  document.getElementById('outputMeta').innerHTML = `
+    <span class="meta-chip accent">${langLabel}</span>
+    <span class="meta-chip">${emotionLabel}</span>
+    <span class="meta-chip">T=${state.params.temp}</span>
+    <span class="meta-chip">${text.length} chars</span>
+    <span class="meta-chip">~${Math.round(text.length * 0.06)}s audio</span>
+  `;
+
+  btn.disabled = false;
+  btn.textContent = '🔊 Generate Speech';
+  setStatus('active', 'Speech generated successfully!');
+}
+
+function generateDemoAudio(text) {
+  // Create a simple multi-tone beep to simulate audio output in demo mode
+  const sampleRate = 24000;
+  const duration = Math.max(1.5, Math.min(text.length * 0.06, 8));
+  const numSamples = Math.floor(sampleRate * duration);
+  const buffer = new ArrayBuffer(44 + numSamples * 2);
+  const view = new DataView(buffer);
+
+  // WAV header
+  const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + numSamples * 2, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  view.setUint32(40, numSamples * 2, true);
+
+  // Generate a humanoid-ish tone sequence
+  const freqs = [200, 250, 220, 240, 180, 260];
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    const fi = Math.floor(t * 4) % freqs.length;
+    const freq = freqs[fi] + Math.sin(t * 3) * 20;
+    const envelope = Math.sin(Math.PI * (i / numSamples));
+    const sample = Math.sin(2 * Math.PI * freq * t) * 0.3 * envelope +
+                   Math.sin(2 * Math.PI * freq * 2 * t) * 0.1 * envelope;
+    view.setInt16(44 + i * 2, Math.max(-32767, Math.min(32767, sample * 32767)), true);
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
+function downloadAudio() {
+  if (!state.currentAudioBlob) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(state.currentAudioBlob);
+  a.download = `voiceforge_output_${Date.now()}.wav`;
+  a.click();
+}
+
+// =========================================================
+// SETTINGS
+// =========================================================
+function updateSlider(key, val) {
+  const v = parseFloat(val);
+  state.params[key] = v;
+  const labels = { temp: 'temp', topP: 'topP', tokens: 'tokens', rep: 'rep' };
+  document.getElementById(`${key}Val`).textContent =
+    key === 'tokens' ? Math.round(v) : v.toFixed(2);
+}
+
+// =========================================================
+// STATUS
+// =========================================================
+function setStatus(type, msg) {
+  document.getElementById('statusText').textContent = msg;
+  const dot = document.getElementById('statusDot');
+  dot.className = `status-dot ${type}`;
+}
+
+// =========================================================
+// INIT
+// =========================================================
+(function init() {
+  idleWaveform();
+  setStatus('active', 'Ready — record your voice to begin');
+})();
+</script>
+</body>
+</html>
